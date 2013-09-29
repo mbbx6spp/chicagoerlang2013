@@ -1,0 +1,25 @@
+.fragment {
+  color: #aaa;
+}
+
+#summary p {
+  line-height: 1.8em;
+  font-size: 48px;
+}
+
+#story ul li {
+  padding: 8px;
+}
+
+#funprogtrading ul li {
+  font-size: 1.4em;
+  line-height: 1.2em;
+  padding: 0.6em 0;
+  border-bottom: 1px dotted #666;
+  list-style: square;
+}
+
+#funprogtrading pre code {
+  font-size: 1.6em;
+  line-height: 1em;
+}

@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Functional Programming for Trading Systems</title>
+  <link rel="stylesheet" href="css/reveal.min.css">
+  <link rel="stylesheet" href="css/theme/night.css" id="theme">
+  <link rel="stylesheet" href="css/solarized_dark.css">
+  <link rel="stylesheet" href="css/susanpotter.css">
+  <style>
+.notes { display: none; }
+  </style>
+
+  <!--Add support for earlier versions of Internet Explorer -->
+  <!--[if lt IE 9]>
+  <script src="lib/js/html5shiv.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides" id="funprogtrading">
+
+      <section id="title">
+        <h3><em>(More)</em></h3>
+        <h2>Functional Programming</h2>
+        <h2>for Trading Systems</h2>
+        <p>&nbsp;</p>
+        <h3>Chicago Erlang Factory Lite</h3>
+        <p>&nbsp;</p>
+        <h4>October 4, 2013</h4>
+        <p>&nbsp;</p>
+        <h3><a href="https://twitter.com/SusanPotter">@SusanPotter</a></h3>
+
+      </section>
+
+      <section id="agenda">
+        <h3>
+          One developer's journey from
+          <em class="fragment highlight-red">bloated</em>
+          <em class="fragment highlight-red">OO</em> codebases and
+          <em class="fragment highlight-red">enterprise</em>
+          architectures to
+          <strong class="fragment highlight-green">more</strong>
+          <strong class="fragment highlight-green">maintainable</strong>,
+          <strong class="fragment highlight-green">honest</strong>
+          distributed systems that work*.
+        </h3>
+        <p>&nbsp;</p>
+        <p class="fragment fade-in">
+          Specifically what <span class="erlang">Erlang</span> taught
+          <em>me</em> on <em>my</em> journey.
+        </p>
+      </section>
+
+      <section id="functional-properties">
+        <h2>Functional Programming</h2>
+        <p>Informally!</p>
+        <ul>
+          <li class="fragment roll-in highlight-green">Immutability <small>(matching vs assignment)</small></li>
+          <li class="fragment roll-in highlight-green">Functions are values</li>
+          <li class="fragment roll-in highlight-red">Referential transparency <small>not enforced</small></li>
+        </ul>
+      </section>
+
+      <section id="break-1">
+      </section>
+
+      <section id="programming-in-the-small">
+        <h1>Programming in the Small</h1>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-1">
+        <h2>Pluggable strategies</h2>
+        <ul>
+          <li class="fragment roll-in">
+            <a href="http://chaosinmotion.com/blog/?p=622">"How (not) to
+            write Factorial in Java"</a> by Bill Woody (~2011)
+          </li>
+          <li class="fragment roll-in">
+            "But here’s my point. <strong>It’s all crap.</strong> Every last line of it."
+          </li>
+          <li class="fragment roll-in">
+            <strong>Missed opportunity:</strong> Why is it so hard in Java?
+          </li>
+        </ul>
+        <sidebar class="notes">
+          Post's main point: pluggable strategies rarely needed so don't do it out of box:
+          * agree with sentiment of avoiding knee jerk reaction in Java to make everything pluggable but
+          * disagree with frequency of need arising in "wild"
+          * Examples VaR implementations historical vs monte carlo simulation strategies as well as encryption algorithms, etc.
+        </sidebar>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-2">
+        <h2>Pluggable strategies</h2>
+
+        <pre><code class="java">// From blog post
+public interface FactorialAlgorithm {
+  BigInteger factorial(int n);
+}
+
+// Plus multiple implementations of the
+// FactorialAlgorithm interface with some
+// boilerplate *and* ~40 lines for factory
+// class and ~20 lines for util static
+// methods boilerplate.
+        </code></pre>
+        <p class="notes">Lots of boilerplate!</p>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-3">
+        <h2>Pluggable strategies</h2>
+
+        <pre><code class="java">// From blog post: getAlgorithm
+FactorialAlgo f = mapping.get(name);
+if (f == null) {
+  Class&lt;? extends FactorialAlgo&gt; c = cMap.get(name);
+  if (c != null) {
+    try {
+      f = c.newInstance();
+      mapping.put(name, f);
+      return f;
+    }
+    catch (Exception e) { /* removed for slides */ }
+  }
+  return getDefaultAlgorithm();
+}
+else return f;
+        </code></pre>
+
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-4">
+        <h2>Pluggable strategies</h2>
+
+        <pre><code class="erlang">-define(DEFAULT_DEFINITION, fun factorial_naive/1).
+
+factorial_naive(N) when N > 0, is_integer(N)  ->
+  N * factorial_naive(N - 1);
+factorial_naive(0) -> 1.
+
+factorial_memoized(0)  -> 1;
+factorial_memoized(1)  -> 1;
+...
+factorial_memoized(20) -> 2432902008176640000;
+factorial_memoized(N) when N > 20, is_integer(N) ->
+  factorial_naive(N).
+
+factorial(N) -> ?DEFAULT_DEFINITION(N).
+factorial(N, Aglo) -> Algo(N).
+        </code></pre>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-5">
+        <h2>Pluggable strategies</h2>
+
+        <pre><code class="erlang">
+% lookup runtime variable
+{ok, Val} = application:get_env(factorial_definition).
+
+% client call
+factorial:factorial(N, fun my_factorial/1)
+        </code></pre>
+        <p class="notes">
+          Even more flexible than Java solution presented without complexity
+        </p>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-6">
+        <h2>Implementation vs Definition</h2>
+
+        <sidebar class="notes">
+          * Java code implemented. Natural style of coding in Java.
+          * Erlang code defined or used declarative style. Natural style in Erlang.
+          * Declarative style means more focus on application logic and domain.
+          * Delcarative style makes code simpler (less complex), which is easier and more productive to test and maintain such a test suite.
+>> RANT!! about OO devs learning to "test" where they code implementation details as assertions in test => expensive to maintain test suite of minimal value.
+          * Declarative style makes it less likely to miss boundary conditions or known edge cases (e.g. N > 0).
+          * Functions as values removes interface and factory boilerplate.
+          * So we are left with the ways to factorial and looking up which method to use from CLI or configuration.
+        </sidebar>
+      </section>
+
+      <section class="pluggable-strategies" id="pluggable-strategies-7">
+        <h2>Implementation vs Definition</h2>
+        <ul>
+          <li class="fragment fade-in">
+          Can do more with less (complexity)
+          by adopting a declarative style
+          </li>
+          <li class="fragment fade-in">
+          <strong>separate concerns:</strong> execution (the how) from app
+          logic (the what)
+          </li>
+          <li class="fragment fade-in">
+          <strong>maintainability win:</strong> more proportion of code
+          focused on app logic
+          </li>
+        </ul>
+      </section>
+
+      <section class="functions" id="break-2">
+      </section>
+
+      <section class="functions" id="functions-1">
+        <h1>Functions</h1>
+        <sidebar class="notes">
+          * First order functions
+            Do not take as argument function values, nor do they return any functions.
+            These abstract over data
+
+          * Higher order functions
+            Takes as argument one or more function values, or returns one or more functions.
+            These abstract over computation
+
+          * Combinators
+            Only uses function application and other combinators to derive return value.
+            These are a subset of higher order functions
+        </sidebar>
+      </section>
+
+      <section class="functions" id="functions-2">
+        <h2>First Order Functions</h2>
+        <pre class="stretch"><code class="erlang">%% Purpose of either module is to offer convenience
+%% functions to generically deal with common
+%% success and error values in Erlang. e.g.
+%%  {ok, Val} | {error, Err} | {error, {Type, Reason}} | ...
+-module(either).
+-export([ either/3, either/2, lefts/1
+        , rights/1, partition/1 ]).
+
+%% either/3 and either/2 defined on subsequent slides
+lefts(Eithers) ->
+  [ Err || {error, Err} &lt;- Eithers ].
+rights(Eithers) ->
+  [ X || {ok, X} &lt;- Eithers ].
+partition(Eithers) ->
+  { lefts(Eithers), rights(Eithers) }.
+        </code></pre>
+      </section>
+
+      <section class="functions" id="either-2">
+        <h2><code>either</code> Higher Order Function</h2>
+        <pre class="stretch"><code class="erlang">%% Higher order function in either module
+either(FunL, FunR, Val) ->
+  case Val of
+    {error, Error}          -> FunL(Error);
+    {error, {Type, Reason}} -> FunL(render(Type, Reason));
+    {ok, State}             -> FunR(State);
+    {ok, State, Cmd}        -> FunR([State, Cmd]);
+    {ok, Reply, State, Cmd} -> FunR([Reply, State, Cmd])
+  end.
+
+% @private
+render(Type, Reason) -> [atom_to_list(Type), ": ", Reason].
+        </code></pre>
+      </section>
+
+
+      <section class="functions" id="either-3">
+        <h2><code>either</code> Higher Order Functions</h2>
+        <pre class="stretch"><code class="erlang">%% Combinator function in either module
+either(FunL, FunR) ->
+  fun({error, Error})         -> FunL(Error);
+     ({error, {Type, Reason}})-> FunL(render(Type, Reason));
+     ({ok, State})            -> FunR(State);
+     ({ok, State, Cmd})       -> FunR([State, Cmd]);
+     ({ok, Reply, State, Cmd})-> FunR([Reply, State, Cmd])
+  end.
+
+% @private
+render(Type, Reason) -> [atom_to_list(Type), ": ", Reason].
+        </code></pre>
+      </section>
+
+      <section class="functions" id="either-4">
+        <h2><code>either</code> use case</h2>
+        <pre class="stretch"><code class="erlang">% returns list of "either values" for each line
+EitherVals = csvparser:parse(File),
+{Errors, Successes} = either:partition(EitherVals),
+% can now return both Errors and Successes to caller
+...
+
+% receive singular "either value" from persistence call
+% and render most appropriate JSON value to return in
+% HTTP response
+EitherVal = db:store(Input),
+Json = either:either(fun render_error/1,
+                     fun render_object/1,
+                     EitherVal),
+...
+        </code></pre>
+      </section>
+
+      <section class="functions" id="higher-order-functions-1">
+        <h2>Higher Order Functions</h2>
+        <pre class=stretch"><code class="erlang_repl">1> A = [1,2,3,4,7,5,6,9,8].
+[1,2,3,4,7,5,6,9,8]
+2> lists:all(fun(X) -> X rem 2 =:= 0 end, A).
+false
+3> lists:any(fun(X) -> X rem 2 =:= 0 end, A).
+true
+4> lists:dropwhile(fun(X) -> X > 4 end, A).
+[1,2,3,4,7,5,6,9,8]
+5> lists:dropwhile(fun(X) -> X < 4 end, A).
+[4,7,5,6,9,8]
+7> lists:filter(fun(X) -> X > 4 end, A).
+[7,5,6,9,8]
+        </code></pre>
+      </section>
+
+      <section class="functions" id="higher-order-functions-2">
+        <h2>Higher Order Functions &amp; Combinators</h2>
+        <ul>
+          <li class="fragment roll-in">Yields more
+          maintainable code that happens to be more reusable</li>
+          <li class="fragment roll-in">One important combinator in functional programming is
+          <code>compose</code>:</li>
+        </ul>
+        <pre class="fragment roll-in"><code class="erlang">compose(G, F) ->
+  fun(X) -> G(F(X)) end.
+        </code></pre>
+      </section>
+
+      <section class="functions" id="compose-1">
+        <h2><code>compose</code> usage</h2>
+        <pre><code class="erlang_repl">
+1> c(funprog).
+{ok,funprog}
+2> Double = fun(X) -> 2*X end.
+#Fun&lt;erl_eval.6.80484245>
+3> Incr = fun(X) -> X+1 end.
+#Fun&lt;erl_eval.6.80484245>
+4> H = funprog:compose(Double, Incr).
+#Fun&lt;funprog.0.99904303>
+5> H(3).
+8
+6> I = funprog:compose(Incr, Double).
+#Fun&lt;funprog.0.99904303>
+7> I(3).
+7
+        </code></pre>
+      </section>
+
+      <section class="break" id="break-4"></section>
+
+      <section class="algebraic-properties" id="algebraic-properties-1">
+        <h2>Algebraic Properties</h2>
+        <p>Example: testing <code class="erlang">lists:sort/1</code></p>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-2">
+        <p>Testing using cases</p>
+        <pre class="fragment roll-in"><code class="erlang">
+test_sort_empty_list() ->
+  ?assert([] =:= lists:sort([])).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+test_single_element_list() ->
+  ?assert([1] =:= lists:sort([1])).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+test_unsorted_multi_element_list() ->
+  ?assert(?SORTED_LIST =:= lists:sort(?UNSORTED_LIST)).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+test_sorted_multi_element_list() ->
+  ?assert(?SORTED_LIST =:= lists:sort(?SORTED_LIST)).
+        </code></pre>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-3">
+        <p>Testing using properties</p>
+        <pre class="fragment roll-in"><code class="erlang">
+prop_list_sort_idempotent() ->
+  ?FORALL(L, list(int()),
+    lists:sort(L) == lists:sort(lists:sort(L))).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+prop_list_sort_size() ->
+  ?FORALL(L, list(int()),
+    length(lists:sort(L)) == length(L)).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+prop_list_sort_last_max() ->
+  ?FORALL(L, list(int()),
+    lists:last(lists:sort(L)) == lists:max(L)).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+prop_list_sort_first_min() ->
+  ?FORALL(L, list(int()),
+    hd(lists:sort(L)) == lists:min(L)).
+        </code></pre>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-4">
+        <pre><code class="erlang_repl">
+4> eqc:quickcheck(algebraic_properties:prop_list_sort_last_max()).
+Failed! Reason:
+{'EXIT',
+    {function_clause,
+        [{lists,last,[[]],[{file,"lists.erl"},{line,213}]},
+         {algebraic_properties,'-prop_list_sort_last_max/0-fun-0-',1,
+             [{file,"algebraic_properties.erl"},{line,19}]},
+         {eqc,'-f885_0/2-fun-4-',2,[]},
+         {eqc_gen,'-f330_0/2-fun-0-',5,[]},
+         {eqc_gen,f195_0,2,[]},
+         {eqc_gen,gen,3,[]},
+         {eqc,'-f867_0/1-fun-2-',3,[]},
+         {eqc_gen,'-f330_0/2-fun-1-',4,[]}]}}
+After 1 tests.
+[]
+false
+        </code></pre>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-5">
+        <h1>DERP!</h1>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-6">
+        <p>Testing using properties</p>
+        <pre><code class="erlang">
+non_empty_list(G) ->
+  [G | list(G)].
+        </code></pre>
+        <pre><code class="erlang">
+prop_list_sort_last_max() ->
+  ?FORALL(L, non_empty_list(int()), lists:last(lists:sort(L)) == lists:max(L)).
+        </code></pre>
+        <pre><code class="erlang">
+prop_list_sort_first_min() ->
+  ?FORALL(L, non_empty_list(int()), hd(lists:sort(L)) == lists:min(L)).
+        </code></pre>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-7">
+        <pre><code class="erlang">
+1> c(algebraic_properties).
+{ok,algebraic_properties}
+2> eqc:quickcheck(algebraic_properties:prop_list_sort_last_max()).
+Starting eqc mini version 1.0.1 (compiled at {{2010,6,13},{11,15,30}})
+.........................................................................
+...........................
+OK, passed 100 tests
+true
+3> eqc:quickcheck(algebraic_properties:prop_list_sort_first_min()).
+.........................................................................
+...........................
+OK, passed 100 tests
+true
+        </code></pre>
+      </section>
+
+      <section class="summary" id="summary">
+        <h1>Summary</h1>
+        <sidebar class="notes">
+        * Declarative style FTW
+          ** Keeps application developers focused on app domain logic
+          ** Can produce more maintainable, cost-effective, and meaningful test suites where focus is on interface (the what) not the implementation
+        * Functions as values are powerful
+          ** Only small number of underlying, reusable functions yield many higher order functions
+          ** Reuse is a secondary benefit in my view
+          ** Primarily improves maintainability
+        * Algebraic properties:
+          ** Can have a very positive impact on mental model while programming in the small
+          ** Arguably yielding more correct code
+          ** However test suite is not deterministic :(
+          ** Doesn't prove not bugs exist, but tests beyond the developers imagination and typing speed
+        </sidebar>
+      </section>
+
+      <section class="questions" id="questions">
+        <h2>Thanks</h2>
+        <h1 class="fragment roll-in">?</h1>
+      </section>
+     </div>
+  </div>
+
+  <script src="lib/js/head.min.js"></script>
+  <script src="js/reveal.min.js"></script>
+  <script>
+    Reveal.initialize({
+      history: true,
+      progress: true,
+      center: true,
+      dependencies: [
+        { src: 'plugin/highlight/highlight.js', async: true,
+          callback: function() { hljs.initHighlightingOnLoad(); }
+        },
+        { src: 'plugin/notes/notes.js', async: true,
+          condition: function() { return !!document.body.classList; }
+        },
+        { src: 'lib/js/classList.js',
+          condition: function() { return !document.body.classList; }
+        }
+      ]
+    });
+    Reveal.addEventListener( 'slidechanged', function( event ) {
+      // event.previousSlide, event.currentSlide, event.indexh, event.indexv
+      var notes = event.currentSlide.querySelector(".notes");
+      if(notes) {
+        notes.style = {display: "none"};
+        console.info(notes.innerHTML.replace(/\n\s+/g,'\n'));
+      }
+    } );
+  </script>
+</body>
+</html>
