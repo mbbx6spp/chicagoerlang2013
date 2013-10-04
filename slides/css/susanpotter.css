@@ -1,14 +1,6 @@
-.fragment {
-  color: #aaa;
-}
-
 #summary p {
   line-height: 1.8em;
   font-size: 48px;
-}
-
-#story ul li {
-  padding: 8px;
 }
 
 #funprogtrading ul li {

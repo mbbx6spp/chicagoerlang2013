@@ -63,11 +63,12 @@
         </ul>
       </section>
 
-      <section id="break-1">
-      </section>
-
       <section id="programming-in-the-small">
-        <h1>Programming in the Small</h1>
+        <h1 class="fragment roll-in">Programming in the Small</h1>
+
+        <sidebar class="notes">
+        PROGRAMMING IN THE SMALL
+        </sidebar>
       </section>
 
       <section class="pluggable-strategies" id="pluggable-strategies-1">
@@ -135,7 +136,6 @@ else return f;
         <h2>Pluggable strategies</h2>
 
         <pre><code class="erlang">-define(DEFAULT_DEFINITION, fun factorial_naive/1).
-
 factorial_naive(N) when N > 0, is_integer(N)  ->
   N * factorial_naive(N - 1);
 factorial_naive(0) -> 1.
@@ -148,6 +148,7 @@ factorial_memoized(N) when N > 20, is_integer(N) ->
   factorial_naive(N).
 
 factorial(N) -> ?DEFAULT_DEFINITION(N).
+
 factorial(N, Aglo) -> Algo(N).
         </code></pre>
       </section>
@@ -200,12 +201,10 @@ factorial:factorial(N, fun my_factorial/1)
         </ul>
       </section>
 
-      <section class="functions" id="break-2">
-      </section>
-
       <section class="functions" id="functions-1">
-        <h1>Functions</h1>
+        <h1 class="fragment roll-in">Functions</h1>
         <sidebar class="notes">
+          FUNCTIONS
           * First order functions
             Do not take as argument function values, nor do they return any functions.
             These abstract over data
@@ -227,29 +226,33 @@ factorial:factorial(N, fun my_factorial/1)
 %% success and error values in Erlang. e.g.
 %%  {ok, Val} | {error, Err} | {error, {Type, Reason}} | ...
 -module(either).
--export([ either/3, either/2, lefts/1
-        , rights/1, partition/1 ]).
+-export([ either/3, either/2, errors/1
+        , successes/1, partition/1 ]).
 
 %% either/3 and either/2 defined on subsequent slides
-lefts(Eithers) ->
+%% errors/1 and successes/1 are incomplete to fit in slide
+
+errors(Eithers) ->
   [ Err || {error, Err} &lt;- Eithers ].
-rights(Eithers) ->
+
+successes(Eithers) ->
   [ X || {ok, X} &lt;- Eithers ].
+
 partition(Eithers) ->
-  { lefts(Eithers), rights(Eithers) }.
+  { errors(Eithers), successes(Eithers) }.
         </code></pre>
       </section>
 
       <section class="functions" id="either-2">
         <h2><code>either</code> Higher Order Function</h2>
         <pre class="stretch"><code class="erlang">%% Higher order function in either module
-either(FunL, FunR, Val) ->
+either(FunE, FunS, Val) ->
   case Val of
-    {error, Error}          -> FunL(Error);
-    {error, {Type, Reason}} -> FunL(render(Type, Reason));
-    {ok, State}             -> FunR(State);
-    {ok, State, Cmd}        -> FunR([State, Cmd]);
-    {ok, Reply, State, Cmd} -> FunR([Reply, State, Cmd])
+    {error, Error}          -> FunE(Error);
+    {error, {Type, Reason}} -> FunE(render(Type, Reason));
+    {ok, State}             -> FunS(State);
+    {ok, State, Cmd}        -> FunS([State, Cmd]);
+    {ok, Reply, State, Cmd} -> FunS([Reply, State, Cmd])
   end.
 
 % @private
@@ -261,12 +264,12 @@ render(Type, Reason) -> [atom_to_list(Type), ": ", Reason].
       <section class="functions" id="either-3">
         <h2><code>either</code> Higher Order Functions</h2>
         <pre class="stretch"><code class="erlang">%% Combinator function in either module
-either(FunL, FunR) ->
-  fun({error, Error})         -> FunL(Error);
-     ({error, {Type, Reason}})-> FunL(render(Type, Reason));
-     ({ok, State})            -> FunR(State);
-     ({ok, State, Cmd})       -> FunR([State, Cmd]);
-     ({ok, Reply, State, Cmd})-> FunR([Reply, State, Cmd])
+either(FunE, FunS) ->
+  fun({error, Error})         -> FunE(Error);
+     ({error, {Type, Reason}})-> FunE(render(Type, Reason));
+     ({ok, State})            -> FunS(State);
+     ({ok, State, Cmd})       -> FunS([State, Cmd]);
+     ({ok, Reply, State, Cmd})-> FunS([Reply, State, Cmd])
   end.
 
 % @private
@@ -343,15 +346,13 @@ true
         </code></pre>
       </section>
 
-      <section class="break" id="break-4"></section>
-
       <section class="algebraic-properties" id="algebraic-properties-1">
-        <h2>Algebraic Properties</h2>
-        <p>Example: testing <code class="erlang">lists:sort/1</code></p>
+        <h2 class="fragment roll-in">Algebraic Properties</h2>
+        <p class="fragment roll-in">Example: testing <code class="erlang">lists:sort/1</code></p>
       </section>
 
       <section class="algebraic-properties" id="algebraic-properties-2">
-        <p>Testing using cases</p>
+        <p>Testing using cases (1/2)</p>
         <pre class="fragment roll-in"><code class="erlang">
 test_sort_empty_list() ->
   ?assert([] =:= lists:sort([])).
@@ -367,6 +368,18 @@ test_unsorted_multi_element_list() ->
         <pre class="fragment roll-in"><code class="erlang">
 test_sorted_multi_element_list() ->
   ?assert(?SORTED_LIST =:= lists:sort(?SORTED_LIST)).
+        </code></pre>
+      </section>
+
+      <section class="algebraic-properties" id="algebraic-properties-2">
+        <p>Testing using cases (2/2)</p>
+        <pre class="fragment roll-in"><code class="erlang">
+test_head_is_minimum() ->
+  ?assert(hd(lists:sort(?UNSORTED_LIST)) =:= lists:min(?UNSORTED_LIST)).
+        </code></pre>
+        <pre class="fragment roll-in"><code class="erlang">
+test_last_is_maximum() ->
+  ?assert(lists:last(lists:sort(?UNSORTED_LIST)) =:= lists:max(?UNSORTED_LIST)).
         </code></pre>
       </section>
 
@@ -468,6 +481,94 @@ true
           ** Arguably yielding more correct code
           ** However test suite is not deterministic :(
           ** Doesn't prove not bugs exist, but tests beyond the developers imagination and typing speed
+        </sidebar>
+      </section>
+
+      <section class="big-things" id="big-things-1">
+        <h1>Big Things</h1>
+      </section>
+
+      <section class="isolation" id="isolation-1">
+        <h1 class="fragment roll-in">Isolation</h1>
+        <p class="fragment roll-in">=> separating error handling from success cases
+        </p>
+        <sidebar class="notes">
+        ISOLATION
+        * As Garrett mentioned earlier, Joe Armstrong's EXCLUSIVE quote for Chicago Erlang Factory Lite
+          that fines were given for second over 4 minutes of downtime per year.
+          I think people that have worked in finance can relate to this.
+          Has anyone been yelled at by a head trader because 2 minutes of downtime
+          lost the business unit $10m?
+          Ok, I have. :|
+        * ISOLATION to the rescue
+        * Supervision trees still require a little bit of thought for each
+          peice of your app but we are separating concerns which is key to
+          cost-effective maintainable code long-term
+          i.e. you can't use the same restart policy for every gen_server.
+        * Anyone tried to jam too much context into a class in an OO language
+          which uses exceptions to handle problems and has more global context
+          to make error handling decisions at a low level?
+        </sidebar>
+      </section>
+
+      <section class="concurrency" id="concurrency-1">
+        <h1 class="fragment roll-in">Concurrency</h1>
+        <p class="fragment roll-in">=> separating <strong>application</strong> concerns
+        </p>
+        <sidebar class="notes">
+        CONCURRENCY
+        * MAINTAINABILITY
+        </sidebar>
+      </section>
+
+      <section class="events" id="events-1">
+        <h1 class="fragment roll-in">Events</h1>
+        <p>
+          <strong class="fragment roll-in">Events</strong>
+          <span class="fragment roll-in">everywhere...especially in finance.</span>
+        </p>
+        <p>
+          <strong class="fragment roll-in">Event (Stream) Processing (ESP)</strong>
+        </p>
+        <p>
+          <strong class="fragment roll-in">Complex Event Processing (CEP)</strong>
+        </p>
+        <sidebar class="notes">
+        EVENTS
+        * Functional and declarative style makes it much more natural to build
+          Event Driven Architectures which are more and more common today.
+        * By extention Erlang processes are a natural way to codify processing
+          events and generating new derived or "complex" events.
+
+        </sidebar>
+      </section>
+
+      <section class="interfacing" id="interfacing-1">
+        <h1 class="fragment roll-in">Interfacing</h1>
+        <p>
+          <strong class="fragment roll-in">With</strong>
+          <span class="fragment roll-in">C/C++,</span>
+          <span class="fragment roll-in">Java/Scala,</span>
+          <span class="fragment roll-in">whatevs!</span>
+        </p>
+        <sidebar class="notes">
+        INTERFACING
+        * But don't get too hung up on this. Only for truly performance
+          critical parts should you bother and then think about isolating
+          the "other" system.
+        * As both Garrett and Mahesh said earlier very few applications truly
+          require the fastest implementation. I would concur EVEN IN FINANCE
+          with high frequency finance.
+        * It really comes down to understanding properties of the system
+          you should be building.
+        * Stop the world GC for our long running stateful service was a
+          deal breaker for us on the JVM.
+        * We were a three person team (starting out) that were tier one
+          or tier one-and-a-half (right behind data center guys). We really
+          cared about operational ease. Like REALLY cared about that!
+        * Three people on almost 24/7 on-call rotations gets old QUICKLY.
+        * Unless your systems hardly ever goes down.
+        * What we _needed_ was more consistent latencies.
         </sidebar>
       </section>
 
