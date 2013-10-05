@@ -1,6 +1,7 @@
-# Functional Programming in Risk Management Systems
+# Functional Programming in Trading Systems
 
-This is a talk I gave at Chicago Erlang Factory Lite in 2013.
+This is a talk I gave at
+[Chicago Erlang Factory Lite in 2013](http://www.erlang-factory.com/conference/Chicago2013/speakers/SusanPotter).
 
 ## Overview
 
